@@ -121,9 +121,9 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="bg-[#f3e8ff] rounded-2xl border border-[#d8b4fe] px-6 py-4 flex flex-col items-center justify-center text-center gap-1.5 text-xs text-zinc-600">
+      {/* <footer className="bg-[#f3e8ff] rounded-2xl border border-[#d8b4fe] px-6 py-4 flex flex-col items-center justify-center text-center gap-1.5 text-xs text-zinc-600">
         <div>
-          {/* <span className="font-semibold text-black">{CREDITS.projectName}</span> */}
+          <span className="font-semibold text-black">{CREDITS.projectName}</span>
         </div>
         <div>
           {CREDITS.developers.map((d) => (
@@ -132,7 +132,7 @@ export default function Home() {
             </span>
           ))} ผู้พัฒนาระบบ{" "}
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }
