@@ -27,53 +27,23 @@ async function syncRegisteredStudents() {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   const auth = await authorizeApi("ANY");
   if ("response" in auth) return auth.response;
 
   try {
-    // ซิงก์รายชื่อนักศึกษาที่สมัครสมาชิกทั้งหมดให้ตรงกับตาราง Student
     await syncRegisteredStudents();
 
-    const user = auth.user;
-
-    if (user.role === "TEACHER") {
-      // อาจารย์เห็นนักศึกษาที่สมัครสมาชิกทั้งหมดในระบบ (ทั้งหน้า /students และหน้าเลือกเข้าวิชา)
-      const allStudents = await prisma.student.findMany({
-        orderBy: { studentId: "asc" },
-      });
-      return NextResponse.json(allStudents);
-    }
-
-    // นักศึกษาเห็นเพื่อนร่วมกลุ่มเดียวกัน
-    const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { username: true, studentId: true, name: true },
-    });
-    const studentIdentifiers = [dbUser?.studentId, dbUser?.username, user.username].filter(
-      (v): v is string => Boolean(v)
-    );
-
-    const students = await prisma.student.findMany({
-      where: {
-        groups: {
-          some: {
-            group: {
-              members: {
-                some: {
-                  student: { studentId: { in: studentIdentifiers } },
-                },
-              },
-            },
-          },
-        },
-      },
+    const allStudents = await prisma.student.findMany({
       orderBy: { studentId: "asc" },
     });
-
-    return NextResponse.json(students);
-  } catch {
-    return NextResponse.json({ error: "ดึงข้อมูลล้มเหลว" }, { status: 500 });
+    return NextResponse.json(allStudents);
+  } catch (error: any) {
+    console.error("GET /api/students error:", error);
+    return NextResponse.json(
+      { error: error?.message || "ดึงข้อมูลล้มเหลว" },
+      { status: 500 }
+    );
   }
 }
 

@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { studentSchema } from "@/lib/studentSchema";
 import { authorizeApi } from "@/lib/session";
+
+const updateStudentSchema = z.object({
+  studentId: z.string().regex(/^\d{3,15}$/, "กรุณากรอกรหัสนักศึกษาเป็นตัวเลขเท่านั้น"),
+  name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล"),
+  year: z.string().optional().nullable(),
+  facultyMajor: z.string().optional().nullable(),
+  image: z.string().optional().nullable(),
+});
 
 // 1. ดึงข้อมูลนักศึกษารายคน (GET) — ผู้ใช้ที่ login แล้วทุกคน
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,11 +38,17 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const id = Number(resolvedParams.id);
 
     const body = await req.json();
-    const validatedData = studentSchema.parse(body);
+    const validatedData = updateStudentSchema.parse(body);
 
     const updatedStudent = await prisma.student.update({
       where: { id },
-      data: validatedData,
+      data: {
+        studentId: validatedData.studentId.trim(),
+        name: validatedData.name.trim().toUpperCase(),
+        year: validatedData.year?.trim() || null,
+        facultyMajor: validatedData.facultyMajor?.trim() || null,
+        ...(validatedData.image !== undefined ? { image: validatedData.image || null } : {}),
+      },
     });
     return NextResponse.json({ message: "Success", data: updatedStudent });
   } catch (error: any) {

@@ -1,10 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { registerSchema } from "@/lib/authSchema";
 
 type Role = "STUDENT" | "TEACHER";
+const YEAR_LIST = Array.from({ length: 6 }, (_, i) => `ชั้นปีที่ ${i + 1}`);
+
+function inferYearFromId(studentId: string): string | null {
+  if (/^\d{2}/.test(studentId)) {
+    const enrollYear = Number(studentId.slice(0, 2));
+    const currentThaiYear = 69; // พ.ศ. 2569
+    const yearNum = currentThaiYear - enrollYear + 1;
+    if (yearNum >= 1 && yearNum <= 6) {
+      return `ชั้นปีที่ ${yearNum}`;
+    }
+  }
+  return null;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -13,13 +26,31 @@ export default function RegisterPage() {
     name: "",
     password: "",
     role: "STUDENT" as Role,
+    year: "ชั้นปีที่ 1",
+    faculty: "",
+    major: "",
     teacherCode: "",
   });
+  const [isYearOpen, setIsYearOpen] = useState(false);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const inputCls =
-    "w-full p-4 bg-white rounded-2xl mt-1 outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-all border border-[#d8b4fe]";
+    "w-full p-4 bg-[#263042] text-white placeholder-[#7f8999] rounded-2xl mt-1.5 outline-none focus:ring-2 focus:ring-[#f59e0b] focus:border-[#f59e0b] transition-all border border-[#3a465c]";
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        yearDropdownRef.current &&
+        !yearDropdownRef.current.contains(e.target as Node)
+      ) {
+        setIsYearOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,15 +58,15 @@ export default function RegisterPage() {
     if (!/^\d{3,15}$/.test(form.username)) {
       setError(
         form.role === "STUDENT"
-          ? "กรุณากรอกรหัสนักศึกษา"
-          : "กรุณากรอกรหัสประจำตัวอาจารย์"
+          ? "กรุณากรอกรหัสนักศึกษาเป็นตัวเลขเท่านั้น"
+          : "กรุณากรอกรหัสประจำตัวอาจารย์เป็นตัวเลขเท่านั้น"
       );
       return;
     }
 
     const cleanedName = form.name.trim().replace(/\s+/g, " ").toUpperCase();
     if (!/^[A-Z]+( [A-Z]+)*$/.test(cleanedName)) {
-      setError("กรุณากรอกชื่อ-นามสกุลเป็นภาษาอังกฤษ");
+      setError("กรุณากรอกชื่อ-นามสกุลเป็นภาษาอังกฤษเท่านั้น");
       return;
     }
 
@@ -50,13 +81,24 @@ export default function RegisterPage() {
       return;
     }
 
+    const combinedFacultyMajor = [form.faculty.trim(), form.major.trim()]
+      .filter(Boolean)
+      .join(" - ");
+
     setError("");
     setIsLoading(true);
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(result.data),
+        body: JSON.stringify({
+          ...result.data,
+          year: form.role === "STUDENT" ? form.year : undefined,
+          facultyMajor:
+            form.role === "STUDENT" && combinedFacultyMajor
+              ? combinedFacultyMajor
+              : undefined,
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -73,12 +115,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-[#f3e8ff] p-8 rounded-3xl shadow-xl border border-[#e9d5ff] mt-10 animate-fade-in">
-      <h2 className="text-3xl font-extrabold text-[#000000] mb-2 text-center">สมัครสมาชิก</h2>
+    <div className="max-w-md mx-auto bg-[#151c2c] p-8 rounded-3xl shadow-xl border border-[#2a3447] mt-10 animate-fade-in">
+      <h2 className="text-3xl font-extrabold text-white mb-6 text-center">สมัครสมาชิก</h2>
 
       {error && (
-        <div className="bg-[#f8d5ff] text-[#6d28d9] p-4 rounded-2xl mb-6 text-sm font-bold text-center border border-[#d8b4fe]">
-          - {error}
+        <div className="bg-red-500/15 text-red-300 p-4 rounded-2xl mb-6 text-sm font-bold text-center border border-red-500/30">
+          * {error}
         </div>
       )}
 
@@ -89,11 +131,14 @@ export default function RegisterPage() {
               <button
                 key={r}
                 type="button"
-                onClick={() => setForm({ ...form, role: r })}
-                className={`py-3 rounded-2xl font-bold border transition-all ce ${
+                onClick={() => {
+                  setForm({ ...form, role: r });
+                  setError("");
+                }}
+                className={`py-3 rounded-2xl font-bold border transition-all cursor-pointer ${
                   form.role === r
-                    ? "bg-[#700d2b] text-white border-[#700d2b]"
-                    : "bg-white text-[#5b21b6] border-[#d8b4fe] hover:bg-[#ede9fe]"
+                    ? "bg-[#f59e0b] text-[#0f172a] border-[#f59e0b]"
+                    : "bg-[#263042] text-slate-300 border-[#3a465c] hover:bg-[#2f3b52]"
                 }`}
               >
                 {r === "STUDENT" ? "นักเรียน" : "อาจารย์"}
@@ -103,7 +148,7 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="text-sm font-bold text-[#000000] ml-2">
+          <label className="text-sm font-bold text-white ml-1">
             {form.role === "STUDENT" ? "รหัสนักศึกษา" : "รหัสประจำตัวอาจารย์"}
           </label>
           <input
@@ -112,21 +157,25 @@ export default function RegisterPage() {
             pattern="[0-9]*"
             autoComplete="username"
             placeholder={
-              form.role === "STUDENT"
-                ? "รหัสนักศึกษา"
-                : "รหัสประจำตัวอาจารย์"
+              form.role === "STUDENT" ? "รหัสนักศึกษา" : "รหัสประจำตัวอาจารย์"
             }
             className={inputCls}
             value={form.username}
             onChange={(e) => {
               const onlyNumbers = e.target.value.replace(/\D/g, "");
-              setForm({ ...form, username: onlyNumbers });
+              const inferred =
+                form.role === "STUDENT" ? inferYearFromId(onlyNumbers) : null;
+              setForm({
+                ...form,
+                username: onlyNumbers,
+                year: inferred ?? form.year,
+              });
             }}
           />
         </div>
 
         <div>
-          <label className="text-sm font-bold text-[#000000] ml-2">
+          <label className="text-sm font-bold text-white ml-1">
             ชื่อ-นามสกุล (ภาษาอังกฤษ)
           </label>
           <input
@@ -141,8 +190,102 @@ export default function RegisterPage() {
           />
         </div>
 
+        {form.role === "STUDENT" && (
+          <>
+            <div ref={yearDropdownRef} className="relative">
+              <label className="text-sm font-bold text-white ml-1">ชั้นปี</label>
+              <button
+                type="button"
+                onClick={() => setIsYearOpen((prev) => !prev)}
+                className={`w-full p-4 bg-[#263042] text-white rounded-2xl mt-1.5 border transition-all flex items-center justify-between cursor-pointer ${
+                  isYearOpen
+                    ? "border-[#f59e0b] ring-2 ring-[#f59e0b]"
+                    : "border-[#3a465c] hover:border-slate-500"
+                }`}
+              >
+                <span className="font-bold text-[#f59e0b]">{form.year}</span>
+                <svg
+                  className={`w-5 h-5 text-slate-300 transition-transform duration-200 ${
+                    isYearOpen ? "rotate-180 text-[#f59e0b]" : ""
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {isYearOpen && (
+                <div className="absolute left-0 right-0 mt-2 max-h-56 overflow-y-auto bg-[#1e2638] border border-[#3a465c] rounded-2xl shadow-2xl divide-y divide-[#2a3447] z-30">
+                  {YEAR_LIST.map((yr) => {
+                    const isSelected = form.year === yr;
+                    return (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, year: yr });
+                          setIsYearOpen(false);
+                        }}
+                        className={`w-full px-4 py-3.5 text-left text-sm font-bold flex items-center gap-3 transition cursor-pointer ${
+                          isSelected
+                            ? "bg-[#2a3447] text-white"
+                            : "text-slate-200 hover:bg-[#263042]"
+                        }`}
+                      >
+                        <span className="w-4 flex items-center justify-center text-[#f59e0b]">
+                          {isSelected && (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        <span>{yr}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-bold text-white ml-1">คณะ</label>
+              <input
+                type="text"
+                placeholder="Ex. CoC"
+                className={inputCls}
+                value={form.faculty}
+                onChange={(e) => setForm({ ...form, faculty: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-bold text-white ml-1">สาขา</label>
+              <input
+                type="text"
+                placeholder="Ex. AISE"
+                className={inputCls}
+                value={form.major}
+                onChange={(e) => setForm({ ...form, major: e.target.value })}
+              />
+            </div>
+          </>
+        )}
+
         <div>
-          <label className="text-sm font-bold text-[#000000] ml-2">รหัสผ่าน</label>
+          <label className="text-sm font-bold text-white ml-1">รหัสผ่าน</label>
           <input
             type="password"
             autoComplete="new-password"
@@ -155,7 +298,7 @@ export default function RegisterPage() {
 
         {form.role === "TEACHER" && (
           <div>
-            <label className="text-sm font-bold text-[#000000] ml-2">ตั้งรหัสสำหรับอาจารย์</label>
+            <label className="text-sm font-bold text-white ml-1">ตั้งรหัสสำหรับอาจารย์</label>
             <input
               type="text"
               placeholder="สร้างรหัสประจำตัว 4 ตัว"
@@ -169,15 +312,15 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="bg-[#700d2b] text-white font-bold py-4 rounded-2xl shadow-lg hover:text-yellow-300 active:scale-[0.98] transition-all disabled:opacity-60 mt-2"
+          className="bg-[#f59e0b] text-[#0f172a] font-extrabold py-4 rounded-2xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 mt-2 cursor-pointer"
         >
           {isLoading ? "กำลังสมัคร..." : "สมัครสมาชิก"}
         </button>
       </form>
 
-      <p className="text-center text-sm text-zinc-600 mt-6">
+      <p className="text-center text-sm text-slate-400 mt-6">
         มีบัญชีอยู่แล้ว?{" "}
-        <Link href="/login" className="font-bold text-[#700d2b] hover:underline">
+        <Link href="/login" className="font-bold text-[#f59e0b] hover:underline">
           เข้าสู่ระบบ
         </Link>
       </p>

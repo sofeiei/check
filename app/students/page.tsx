@@ -1,15 +1,36 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
+
+function getYearLevel(studentId: string, savedYear?: string | number | null) {
+  if (savedYear) return String(savedYear).trim();
+  if (/^\d{2}/.test(studentId)) {
+    const enrollYear = Number(studentId.slice(0, 2));
+    const currentThaiYear = 69; // พ.ศ. 2569
+    const year = currentThaiYear - enrollYear + 1;
+    if (year >= 1 && year <= 10) return `ชั้นปีที่ ${year}`;
+  }
+  return "-";
+}
+
+const SORT_OPTIONS = [
+  { value: "STUDENT_ID", label: "เรียงตามรหัส" },
+  { value: "NAME", label: "เรียงตามชื่อ" },
+];
 
 export default function StudentList() {
   const { isTeacher } = useAuth();
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [yearFilter, setYearFilter] = useState<string>("ALL");
+  const [sortBy, setSortBy] = useState<string>("STUDENT_ID");
 
-  const fetchStudents = () => {
+  const [openDropdown, setOpenDropdown] = useState<"YEAR" | "SORT" | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
     fetch("/api/students")
       .then((res) => res.json())
       .then((data) => {
@@ -17,161 +38,319 @@ export default function StudentList() {
         setIsLoading(false);
       })
       .catch(() => setIsLoading(false));
-  };
-
-  useEffect(() => {
-    fetchStudents();
   }, []);
 
-  const handleDelete = async (id: number) => {
-    if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?")) {
-      const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        alert(data.error || "ลบข้อมูลไม่สำเร็จ");
-        return;
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenDropdown(null);
       }
-      fetchStudents();
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const enrichedStudents = students.map((std) => ({
+    ...std,
+    resolvedYear: getYearLevel(std.studentId, std.year || std.classYear),
+    resolvedFacultyMajor:
+      [std.faculty, std.major || std.department].filter(Boolean).join(" - ") ||
+      std.facultyMajor ||
+      "",
+  }));
+
+  // สร้างรายการชั้นปีใน Dropdown อัตโนมัติตามข้อมูลจริงของนักศึกษา (อย่างน้อยมี ปี 1-4 และเพิ่มตามปีสูงสุดที่มีจริง)
+  const yearFilterOptions = (() => {
+    const yearSet = new Set<string>(["ชั้นปีที่ 1", "ชั้นปีที่ 2", "ชั้นปีที่ 3", "ชั้นปีที่ 4"]);
+    let hasUnknown = false;
+
+    for (const std of enrichedStudents) {
+      if (std.resolvedYear && std.resolvedYear !== "-") {
+        yearSet.add(std.resolvedYear);
+      } else {
+        hasUnknown = true;
+      }
     }
-  };
 
-  const filteredStudents = students.filter(
-    (student) =>
-      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.studentId.includes(searchTerm)
-  );
+    const sortedYears = Array.from(yearSet).sort((a, b) => {
+      const numA = Number(a.replace(/\D/g, "")) || 999;
+      const numB = Number(b.replace(/\D/g, "")) || 999;
+      return numA - numB;
+    });
 
-  const totalStudents = filteredStudents.length;
-  const averageGPA =
-    totalStudents > 0
-      ? (filteredStudents.reduce((sum, std) => sum + std.gpa, 0) / totalStudents).toFixed(2)
-      : 0;
-  const highPerformers = filteredStudents.filter((std) => std.gpa >= 3.5).length;
+    const options = [
+      { value: "ALL", label: "ทั้งหมด" },
+      ...sortedYears.map((yr) => ({ value: yr, label: yr })),
+    ];
 
-  if (isLoading)
+    if (hasUnknown) {
+      options.push({ value: "-", label: "ไม่ระบุชั้นปี" });
+    }
+
+    return options;
+  })();
+
+  const filteredStudents = enrichedStudents
+    .filter((std) => {
+      const matchesYear = yearFilter === "ALL" || std.resolvedYear === yearFilter;
+      const keyword = searchTerm.toLowerCase();
+      const matchesSearch =
+        std.name.toLowerCase().includes(keyword) ||
+        std.studentId.includes(searchTerm) ||
+        std.resolvedYear.toLowerCase().includes(keyword) ||
+        std.resolvedFacultyMajor.toLowerCase().includes(keyword);
+      return matchesYear && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === "NAME") {
+        return a.name.localeCompare(b.name);
+      }
+      return a.studentId.localeCompare(b.studentId);
+    });
+
+  const currentYearLabel =
+    yearFilterOptions.find((opt) => opt.value === yearFilter)?.label || "ทั้งหมด";
+  const currentSortLabel =
+    SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label || "เรียงตามรหัส";
+
+  if (isLoading) {
     return (
-      <div className="text-center mt-20 text-[#000000] font-bold animate-pulse">
+      <div className="text-center mt-20 text-[#f59e0b] font-bold animate-pulse">
         กำลังโหลดข้อมูล...
       </div>
     );
+  }
 
   return (
-    <div className="mt-4">
-      <div className="flex flex-col md:flex-row md:justify-between items-center mb-8 gap-4 border-b border-[#ede9fe] pb-4 text-center md:text-left">
-        <div>
-          <h2 className="text-3xl font-extrabold text-[#000000]">รายชื่อนักศึกษา</h2>
-          <p className="text-[#000000] mt-1 font-medium">
-            ดึงข้อมูลจากนักศึกษาที่สมัครสมาชิกทั้งหมด ({filteredStudents.length} รายการ)
-          </p>
-          {!isTeacher && (
-            <p className="text-sm text-[#7c3aed] mt-1">โหมดนักเรียน: ดูข้อมูลได้อย่างเดียว</p>
-          )}
-        </div>
+    <div className="mt-2 space-y-6">
+      <div>
+        <h1 className="text-3xl font-extrabold text-[#f59e0b]">Students</h1>
+        <p className="text-slate-300 text-sm mt-1">
+          รวมรายชื่อนักศึกษาทั้งหมด
+        </p>
+
       </div>
 
-      {/* แถบค้นหา */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="ค้นหาชื่อหรือรหัสนักศึกษา..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-md p-3 bg-[#f3e8ff] border border-[#d8b4fe] rounded-2xl outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-all placeholder-[#7c3aed] text-[#5b21b6]"
-        />
-      </div>
+      <div className="bg-[#151c2c] rounded-3xl border border-[#2a3447] shadow-xl">
+        <div className="p-5 sm:p-6 border-b border-[#2a3447] space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-extrabold text-[#f59e0b]">รายชื่อนักศึกษา</h2>
+              <span className="px-4 py-1.5 rounded-full text-xs font-extrabold text-[#f59e0b]">
+                ทั้งหมด {enrichedStudents.length} คน
+              </span>
+          </div>
 
-      {/* สถิติ */}
-      {totalStudents > 0 && (
-        <div className="grid grid-cols-3 gap-2 md:gap-4 mb-8">
-          <div className="bg-[#f3e8ff] p-3 md:p-4 rounded-2xl border border-[#d8b4fe] text-center shadow-sm">
-            <p className="text-xl md:text-2xl font-bold text-[#000000]">{totalStudents}</p>
-            <p className="text-xs md:text-sm text-[#000000]">นักศึกษาทั้งหมด</p>
+          <div ref={dropdownRef} className="flex flex-wrap items-center gap-3">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenDropdown(openDropdown === "YEAR" ? null : "YEAR")
+                }
+                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#f59e0b] text-white font-extrabold text-sm shadow-md hover:opacity-95 transition cursor-pointer"
+              >
+                <span>{currentYearLabel}</span>
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${openDropdown === "YEAR" ? "rotate-180" : ""
+                    }`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {openDropdown === "YEAR" && (
+                <div className="absolute left-0 mt-2 w-52 bg-[#1e2638] border border-[#3a465c] rounded-2xl shadow-2xl overflow-hidden z-30">
+                  {yearFilterOptions.map((opt) => {
+                    const isSelected = yearFilter === opt.value;
+                    const count =
+                      opt.value === "ALL"
+                        ? enrichedStudents.length
+                        : enrichedStudents.filter((s) => s.resolvedYear === opt.value).length;
+
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setYearFilter(opt.value);
+                          setOpenDropdown(null);
+                        }}
+                        className={`w-full px-4 py-3.5 text-left text-sm font-bold flex items-center justify-between transition cursor-pointer ${isSelected
+                            ? "bg-[#2a3447] text-white"
+                            : "text-slate-200 hover:bg-[#263042]"
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="w-4 flex items-center justify-center text-[#f59e0b]">
+                            {isSelected && (
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={3}
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M5 13l4 4L19 7"
+                                />
+                              </svg>
+                            )}
+                          </span>
+                          <span>{opt.label}</span>
+                        </div>
+                        <span className="text-xs text-slate-400">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenDropdown(openDropdown === "SORT" ? null : "SORT")
+                }
+                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#7c3aed] text-white font-extrabold text-sm shadow-md hover:opacity-95 transition cursor-pointer"
+              >
+                <span>{currentSortLabel}</span>
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${openDropdown === "SORT" ? "rotate-180" : ""
+                    }`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {openDropdown === "SORT" && (
+                <div className="absolute left-0 mt-2 w-48 bg-[#1e2638] border border-[#3a465c] rounded-2xl shadow-2xl overflow-hidden z-30">
+                  {SORT_OPTIONS.map((opt) => {
+                    const isSelected = sortBy === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(opt.value);
+                          setOpenDropdown(null);
+                        }}
+                        className={`w-full px-4 py-3.5 text-left text-sm font-bold flex items-center gap-3 transition cursor-pointer ${isSelected
+                            ? "bg-[#2a3447] text-white"
+                            : "text-slate-200 hover:bg-[#263042]"
+                          }`}
+                      >
+                        <span className="w-4 flex items-center justify-center text-[#f59e0b]">
+                          {isSelected && (
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          )}
+                        </span>
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="bg-[#f3e8ff] p-3 md:p-4 rounded-2xl border border-[#d8b4fe] text-center shadow-sm">
-            <p className="text-xl md:text-2xl font-bold text-[#000000]">{averageGPA}</p>
-            <p className="text-xs md:text-sm text-[#000000]">เกรดเฉลี่ยรวม</p>
-          </div>
-          <div className="bg-[#f3e8ff] p-3 md:p-4 rounded-2xl border border-[#d8b4fe] text-center shadow-sm">
-            <p className="text-xl md:text-2xl font-bold text-[#000000]">{highPerformers}</p>
-            <p className="text-xs md:text-sm text-[#000000]">เกรดดีเยี่ยม (≥3.5)</p>
-          </div>
+
+          <input
+            type="text"
+            placeholder="ค้นหานักศึกษา..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-3.5 bg-[#263042] text-white placeholder-[#7f8999] rounded-2xl outline-none focus:ring-2 focus:ring-[#f59e0b] transition-all border border-[#3a465c] text-sm"
+          />
         </div>
-      )}
 
-      {filteredStudents.length === 0 ? (
-        <div className="text-center bg-[#f3e8ff] p-10 rounded-3xl border border-[#d8b4fe] shadow-sm mt-10">
-          <p className="text-[#000000] mb-4">ยังไม่มีนักศึกษาที่สมัครสมาชิกในระบบ</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStudents.map((std) => (
-            <div
-              key={std.id}
-              className="bg-[#f3e8ff] p-6 rounded-3xl shadow-sm border border-[#d8b4fe] hover:shadow-lg hover:scale-105 transition-all duration-300 relative overflow-hidden flex flex-col h-full animate-fade-in"
-            >
-              <div className="absolute top-0 left-0 w-2 h-full bg-[#7c3aed]"></div>
+        {filteredStudents.length === 0 ? (
+          <div className="py-16 px-6 text-center">
+            <p className="text-slate-400 text-sm font-medium">
+              ไม่พบรายชื่อนักศึกษาที่ตรงกับเงื่อนไข
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-[#2a3447]">
+            {filteredStudents.map((std, index) => (
+              <div
+                key={std.id}
+                className="p-4 sm:px-6 sm:py-4 flex items-center justify-between gap-3 hover:bg-[#1e293b]/60 transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <span className="hidden sm:inline-block w-6 text-xs font-bold text-slate-500">
+                    {index + 1}.
+                  </span>
 
-              <div className="flex-grow">
-                <div className="flex items-center gap-3 mb-3">
                   {std.image ? (
                     <img
                       src={std.image}
                       alt={std.name}
-                      className="w-12 h-12 object-cover rounded-full border-2 border-[#7c3aed]"
+                      className="w-10 h-10 object-cover rounded-full border border-[#f59e0b] shrink-0"
                     />
                   ) : (
-                    <div className="w-12 h-12 bg-[#d8b4fe] rounded-full flex items-center justify-center text-[#7c3aed] font-bold">
+                    <div className="w-10 h-10 bg-[#263042] border border-[#3a465c] rounded-full flex items-center justify-center text-[#f59e0b] font-extrabold shrink-0">
                       {std.name.charAt(0)}
                     </div>
                   )}
-                  <div>
-                    <p className="text-xs font-bold text-[#7c3aed] tracking-wider mb-1 uppercase">
-                      รหัสนักศึกษา
+
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-white text-sm sm:text-base truncate">
+                      {std.name}
                     </p>
-                    <p className="text-xl font-black text-[#3b076b]">{std.studentId}</p>
+                    <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                      <p className="text-xs font-bold text-[#f59e0b]">
+                        {std.studentId}
+                      </p>
+                      {std.resolvedFacultyMajor && (
+                        <span className="text-xs font-medium text-slate-400 truncate">
+                          • {std.resolvedFacultyMajor}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <p className="text-xs font-bold text-[#5b21b6] tracking-wider mb-1 uppercase">
-                  ชื่อ-นามสกุล
-                </p>
-                <p className="text-lg font-bold text-[#3b076b] mb-4 truncate">{std.name}</p>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#263042] text-slate-200 border border-[#3a465c] whitespace-nowrap">
+                    {std.resolvedYear}
+                  </span>
 
-                <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#d8b4fe]">
-                  <p className="text-sm font-bold text-[#5b21b6]">เกรดเฉลี่ยสะสม</p>
-                  <p
-                    className={`text-2xl font-black ${
-                      std.gpa >= 3.0
-                        ? "text-emerald-500"
-                        : std.gpa >= 2.0
-                        ? "text-amber-500"
-                        : "text-rose-500"
-                    }`}
-                  >
-                    {std.gpa.toFixed(2)}
-                  </p>
+                  {isTeacher && (
+                    <Link
+                      href={`/edit/${std.id}`}
+                      className="px-3 py-1 rounded-xl bg-[#263042] hover:bg-[#f59e0b] hover:text-[#0f172a] text-slate-200 font-bold text-xs border border-[#3a465c] transition whitespace-nowrap"
+                    >
+                      แก้ไข
+                    </Link>
+                  )}
                 </div>
               </div>
-
-              {isTeacher && (
-                <div className="mt-6 flex gap-2">
-                  <Link href={`/edit/${std.id}`} className="flex-1">
-                    <button className="w-full bg-[#d8b4fe] hover:bg-[#8b5cf6] hover:text-white text-[#5b21b6] font-bold py-2 rounded-xl transition-all text-sm border border-[#c4b5fd]">
-                      Edit
-                    </button>
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(std.id)}
-                    className="flex-1 bg-[#f3e8ff] hover:bg-[#7c3aed] hover:text-white text-[#5b21b6] font-bold py-2 rounded-xl transition-all text-sm border border-[#c4b5fd]"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

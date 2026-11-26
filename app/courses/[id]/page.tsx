@@ -205,32 +205,44 @@ export default function CourseDetailPage({
   if (error) {
     return (
       <div className="max-w-3xl mx-auto p-6 text-center">
-        <p className="text-red-500 font-medium mb-4">{error}</p>
-        <Link href="/courses" className="text-[#700d2b] hover:underline font-semibold">
+        <p className="text-red-400 font-medium mb-4">{error}</p>
+        <Link href="/courses" className="text-[#f59e0b] hover:underline font-semibold">
           ← กลับหน้ารายวิชาทั้งหมด
         </Link>
       </div>
     );
   }
 
-  if (!course) return <div className="p-6 text-center text-zinc-500">กำลังโหลดข้อมูลรายวิชา...</div>;
+  if (!course) {
+    return (
+      <div className="p-6 text-center text-[#f59e0b] font-bold animate-pulse">
+        กำลังโหลดข้อมูลรายวิชา...
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
+    <div className="max-w-5xl mx-auto space-y-5 mt-4">
       {/* Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#f3e8ff] px-4 py-2.5 rounded-xl border border-[#d8b4fe] text-sm">
-        <div className="flex items-center gap-2 text-zinc-700">
-          <Link href="/courses" className="hover:text-[#700d2b] font-semibold">
-            🏠 Courses
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#151c2c] px-5 py-3 rounded-2xl border border-[#2a3447] text-sm">
+        <div className="flex items-center gap-2 text-slate-300">
+          <Link
+            href="/courses"
+            className="hover:text-[#f59e0b] font-semibold flex items-center gap-1.5 transition"
+          >
+            <svg className="w-5 h-5 text-[#f59e0b]" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11.25 4.533A9.707 9.707 0 006 3a9.735 9.735 0 00-3.25.555.75.75 0 00-.5.707v14.25a.75.75 0 001 .707A8.237 8.237 0 016 18.75c1.995 0 3.823.707 5.25 1.886V4.533zM12.75 20.636A8.214 8.214 0 0118 18.75c.966 0 1.89.166 2.75.47a.75.75 0 001-.708V4.262a.75.75 0 00-.5-.707A9.735 9.735 0 0018 3a9.707 9.707 0 00-5.25 1.533v16.103z" />
+            </svg>
+            <span>Courses</span>
           </Link>
-          <span>›</span>
-          <span className="font-bold text-[#3b076b]">{course.name}</span>
+          <span className="text-slate-500">›</span>
+          <span className="font-bold text-[#f59e0b]">{course.name}</span>
         </div>
 
         {isOwner && (
           <button
             onClick={handleDeleteCourse}
-            className="text-xs px-3 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold"
+            className="text-xs px-3.5 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-semibold transition cursor-pointer"
           >
             ลบรายวิชา
           </button>
@@ -238,32 +250,85 @@ export default function CourseDetailPage({
       </div>
 
       {/* กล่องหลักของรายวิชา */}
-      <div className="bg-[#f3e8ff] rounded-2xl border border-[#d8b4fe] shadow-sm overflow-hidden">
+      <div className="bg-[#151c2c] rounded-3xl border border-[#2a3447] shadow-xl overflow-hidden">
         <div className="p-6 pb-0">
-          <h1 className="text-2xl font-extrabold text-[#3b076b]">{course.name}</h1>
-          {course.description && <p className="text-sm text-zinc-600 mt-1">{course.description}</p>}
-          <p className="text-xs text-zinc-500 mt-2">อาจารย์ผู้สอน: {course.creator.name}</p>
+          {/* ชื่อคอร์ส (ซ้าย) ตรงข้ามกับปุ่ม Add Section (ขวา) */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-2xl font-extrabold text-[#f59e0b] break-words">
+                {course.name}
+              </h1>
+              {course.description && (
+                <p className="text-sm text-slate-300 mt-1">{course.description}</p>
+              )}
+              <p className="text-xs text-slate-400 mt-2">
+                อาจารย์ผู้สอน: {course.creator.name}
+              </p>
+            </div>
 
-          <div className="flex items-center gap-6 mt-5 border-b border-[#d8b4fe] text-sm font-bold">
+            {isOwner && !showNewSection && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("course");
+                  setShowNewSection(true);
+                }}
+                className="text-xs px-3.5 py-1.5 rounded-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold transition cursor-pointer"
+              >
+                Add Section
+              </button>
+            )}
+          </div>
+
+          {/* ฟอร์มเพิ่มหัวข้อใหม่ (แสดงเมื่อกด Add Section) */}
+          {isOwner && showNewSection && (
+            <form
+              onSubmit={handleCreateSection}
+              className="mt-4 w-full flex flex-wrap items-center gap-2 bg-[#1e2638] p-3.5 rounded-2xl border border-[#3a465c]"
+            >
+              <input
+                type="text"
+                required
+                autoFocus
+                placeholder="Add new section title"
+                value={newSectionTitle}
+                onChange={(e) => setNewSectionTitle(e.target.value)}
+                className="flex-1 min-w-[200px] px-3.5 py-2 text-sm border border-[#3a465c] rounded-xl bg-[#263042] text-white placeholder-[#7f8999] outline-none focus:ring-2 focus:ring-[#f59e0b]"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 rounded-xl bg-[#f59e0b] text-[#0f172a] text-sm font-extrabold cursor-pointer"
+              >
+                บันทึกหัวข้อ
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNewSection(false)}
+                className="px-3.5 py-2 rounded-xl border border-[#3a465c] bg-[#263042] text-sm text-slate-300 hover:text-white cursor-pointer"
+              >
+                ยกเลิก
+              </button>
+            </form>
+          )}
+
+          <div className="flex items-center gap-6 mt-5 border-b border-[#2a3447] text-sm font-bold">
             <button
               type="button"
               onClick={() => setActiveTab("course")}
-              className={`pb-3 border-b-2 transition ${
-                activeTab === "course"
-                  ? "border-[#700d2b] text-[#700d2b]"
-                  : "border-transparent text-zinc-600 hover:text-[#3b076b]"
-              }`}
+              className={`pb-3 border-b-2 transition cursor-pointer ${activeTab === "course"
+                  ? "border-[#f59e0b] text-[#f59e0b]"
+                  : "border-transparent text-slate-400 hover:text-white"
+                }`}
             >
               Course ({course.sections?.length ?? 0})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("participants")}
-              className={`pb-3 border-b-2 transition ${
-                activeTab === "participants"
-                  ? "border-[#700d2b] text-[#700d2b]"
-                  : "border-transparent text-zinc-600 hover:text-[#3b076b]"
-              }`}
+              className={`pb-3 border-b-2 transition cursor-pointer ${activeTab === "participants"
+                  ? "border-[#f59e0b] text-[#f59e0b]"
+                  : "border-transparent text-slate-400 hover:text-white"
+                }`}
             >
               Participants ({course.members.length})
             </button>
@@ -273,67 +338,26 @@ export default function CourseDetailPage({
         {/* แท็บ 1: Course */}
         {activeTab === "course" && (
           <div className="p-6 space-y-4">
-            {isOwner && (
-              <div className="flex justify-end">
-                {!showNewSection ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowNewSection(true)}
-                    className="px-4 py-2 rounded-xl bg-[#700d2b] hover:opacity-90 text-white text-sm font-semibold shadow-xs"
-                  >
-                    + เพิ่มหัวข้อ (Add Section / List)
-                  </button>
-                ) : (
-                  <form
-                    onSubmit={handleCreateSection}
-                    className="w-full flex flex-wrap items-center gap-2 bg-white p-3 rounded-xl border border-[#c4b5fd]"
-                  >
-                    <input
-                      type="text"
-                      required
-                      placeholder="เช่น Week 1: Course Overview, Intro to Academic Research"
-                      value={newSectionTitle}
-                      onChange={(e) => setNewSectionTitle(e.target.value)}
-                      className="flex-1 min-w-[220px] px-3 py-1.5 text-sm border border-[#c4b5fd] rounded-lg text-zinc-800"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-1.5 rounded-lg bg-[#700d2b] text-white text-sm font-semibold"
-                    >
-                      บันทึกหัวข้อ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowNewSection(false)}
-                      className="px-3 py-1.5 rounded-lg border border-[#c4b5fd] text-sm text-zinc-600"
-                    >
-                      ยกเลิก
-                    </button>
-                  </form>
-                )}
-              </div>
-            )}
-
             {!course.sections || course.sections.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-[#c4b5fd] p-10 text-center text-sm text-zinc-500">
+              <div className="bg-[#1e2638] rounded-2xl border border-[#3a465c] p-10 text-center text-sm text-slate-400">
                 ยังไม่มีหัวข้อหรือคำสั่งงานในรายวิชานี้
               </div>
             ) : (
-              <div className="divide-y divide-[#e9d5ff] border border-[#d8b4fe] rounded-xl bg-white overflow-hidden">
+              <div className="divide-y divide-[#2a3447] border border-[#2a3447] rounded-2xl bg-[#1e2638] overflow-hidden">
                 {course.sections.map((section) => {
                   const isExpanded = !!expandedSections[section.id];
                   return (
                     <div key={section.id} className="transition-colors">
-                      <div className="flex items-center justify-between px-5 py-4 hover:bg-[#f5f0ff]/60">
+                      <div className="flex items-center justify-between px-5 py-4 hover:bg-[#263042]/60">
                         <button
                           type="button"
                           onClick={() => toggleSection(section.id)}
-                          className="flex items-center gap-3.5 text-left flex-1"
+                          className="flex items-center gap-3.5 text-left flex-1 cursor-pointer"
                         >
-                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#e9d5ff] text-[#700d2b] font-bold text-sm transition-transform">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#263042] border border-[#3a465c] text-[#f59e0b] font-bold text-sm transition-transform">
                             {isExpanded ? "⌄" : "›"}
                           </span>
-                          <span className="text-base md:text-lg font-extrabold text-[#3b076b]">
+                          <span className="text-base md:text-lg font-extrabold text-white">
                             {section.title}
                           </span>
                         </button>
@@ -343,14 +367,14 @@ export default function CourseDetailPage({
                             <button
                               type="button"
                               onClick={() => setTargetSectionId(section.id)}
-                              className="px-3 py-1 rounded-lg bg-[#7c3aed] hover:opacity-90 text-white text-xs font-semibold"
+                              className="text-xs px-3.5 py-1.5 rounded-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold transition cursor-pointer"
                             >
-                              + สั่งงาน / เพิ่มรายการ
+                              Add
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteSection(section.id)}
-                              className="px-2 py-1 text-xs text-red-500 hover:underline"
+                              className="text-xs px-3.5 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white font-semibold transition cursor-pointer"
                             >
                               ลบ
                             </button>
@@ -359,50 +383,54 @@ export default function CourseDetailPage({
                       </div>
 
                       {isExpanded && (
-                        <div className="px-6 pb-5 pt-1 pl-14 space-y-3 border-t border-[#f3e8ff]">
+                        <div className="px-6 pb-5 pt-2 pl-14 space-y-3 border-t border-[#2a3447] bg-[#151c2c]/60">
                           {section.items.length === 0 ? (
-                            <p className="text-xs text-zinc-400 italic py-2">
+                            <p className="text-xs text-slate-500 italic py-2">
                               ยังไม่มีรายการในหัวข้อนี้
                             </p>
                           ) : (
                             section.items.map((item) => (
                               <div
                                 key={item.id}
-                                className="flex items-start justify-between gap-4 py-3 border-b last:border-b-0 border-[#f3e8ff]"
+                                className="flex items-start justify-between gap-4 py-3 border-b last:border-b-0 border-[#2a3447]"
                               >
                                 <div className="flex items-start gap-3.5">
                                   {item.type === "MATERIAL" ? (
-                                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600 font-bold text-xs border border-sky-200">
-                                      PDF
+                                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                      </svg>
                                     </span>
                                   ) : (
-                                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pink-600 text-white font-bold text-sm">
-                                      ✎
+                                    <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/30">
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                                      </svg>
                                     </span>
                                   )}
 
                                   <div>
-                                    <p className="text-sm md:text-base font-bold text-[#7c3aed]">
+                                    <p className="text-sm md:text-base font-bold text-[#f59e0b]">
                                       {item.title}
                                     </p>
 
                                     {item.description && (
-                                      <p className="text-sm text-zinc-700 mt-1 whitespace-pre-line">
+                                      <p className="text-sm text-slate-300 mt-1 whitespace-pre-line">
                                         {item.description}
                                       </p>
                                     )}
 
                                     {(item.openedAt || item.dueDate) && (
-                                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-zinc-600 mt-1.5">
+                                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400 mt-1.5">
                                         {item.openedAt && (
                                           <span>
-                                            <strong className="text-zinc-800">Opened:</strong>{" "}
+                                            <strong className="text-slate-200">Opened:</strong>{" "}
                                             {formatDateTime(item.openedAt)}
                                           </span>
                                         )}
                                         {item.dueDate && (
                                           <span>
-                                            <strong className="text-zinc-800">Due:</strong>{" "}
+                                            <strong className="text-slate-200">Due:</strong>{" "}
                                             {formatDateTime(item.dueDate)}
                                           </span>
                                         )}
@@ -415,7 +443,7 @@ export default function CourseDetailPage({
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteItem(section.id, item.id)}
-                                    className="text-xs text-red-500 hover:underline shrink-0"
+                                    className="text-xs text-red-400 hover:underline shrink-0 cursor-pointer"
                                   >
                                     ลบ
                                   </button>
@@ -437,45 +465,45 @@ export default function CourseDetailPage({
         {activeTab === "participants" && (
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-bold text-[#3b076b]">
+              <h2 className="text-base font-bold text-white">
                 รายชื่อนักศึกษาในรายวิชา ({course.members.length} คน)
               </h2>
               {isOwner && (
                 <button
                   onClick={openAddMembers}
-                  className="px-3.5 py-1.5 bg-[#700d2b] hover:opacity-90 text-white text-sm rounded-xl font-semibold"
+                  className="px-4 py-1.5 bg-[#f59e0b] hover:opacity-90 text-[#0f172a] text-sm rounded-full font-extrabold cursor-pointer"
                 >
-                  + เพิ่มสมาชิก
+                  เพิ่มสมาชิก
                 </button>
               )}
             </div>
 
             {course.members.length === 0 ? (
-              <p className="text-zinc-500 text-sm bg-white p-6 rounded-xl text-center">
+              <p className="text-slate-400 text-sm bg-[#1e2638] border border-[#3a465c] p-6 rounded-2xl text-center">
                 ยังไม่มีนักศึกษาในรายวิชานี้
               </p>
             ) : (
-              <div className="border border-[#d8b4fe] rounded-xl overflow-hidden bg-white">
+              <div className="border border-[#2a3447] rounded-2xl overflow-hidden bg-[#1e2638]">
                 <table className="w-full text-left text-sm">
-                  <thead className="bg-[#f5f0ff] border-b border-[#d8b4fe] text-[#3b076b]">
+                  <thead className="bg-[#263042] border-b border-[#3a465c] text-[#f59e0b]">
                     <tr>
-                      <th className="p-3">รหัสนักศึกษา</th>
-                      <th className="p-3">ชื่อ-นามสกุล</th>
-                      <th className="p-3">GPA</th>
-                      {isOwner && <th className="p-3 text-right">จัดการ</th>}
+                      <th className="p-3.5">รหัสนักศึกษา</th>
+                      <th className="p-3.5">ชื่อ-นามสกุล</th>
+                      {isOwner && <th className="p-3.5 text-right">จัดการ</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#f3e8ff]">
+                  <tbody className="divide-y divide-[#2a3447] text-slate-200">
                     {course.members.map(({ student }) => (
-                      <tr key={student.id}>
-                        <td className="p-3 font-mono">{student.studentId}</td>
-                        <td className="p-3 font-medium">{student.name}</td>
-                        <td className="p-3">{student.gpa.toFixed(2)}</td>
+                      <tr key={student.id} className="hover:bg-[#263042]/50">
+                        <td className="p-3.5 font-mono text-[#f59e0b] font-bold">
+                          {student.studentId}
+                        </td>
+                        <td className="p-3.5 font-semibold text-white">{student.name}</td>
                         {isOwner && (
-                          <td className="p-3 text-right">
+                          <td className="p-3.5 text-right">
                             <button
                               onClick={() => handleRemoveMember(student.id)}
-                              className="text-red-500 hover:underline text-xs font-semibold"
+                              className="text-red-400 hover:underline text-xs font-semibold cursor-pointer"
                             >
                               นำออกจากรายวิชา
                             </button>
@@ -493,91 +521,122 @@ export default function CourseDetailPage({
 
       {/* Modal สั่งงาน / เพิ่มเอกสาร */}
       {targetSectionId !== null && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
           <form
             onSubmit={handleCreateItem}
-            className="bg-[#f5f0ff] border border-[#d8b4fe] rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4"
+            className="bg-[#151c2c] border border-[#2a3447] rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-4"
           >
-            <h3 className="font-extrabold text-lg text-[#3b076b]">
-              เพิ่มรายการ / สั่งงานในหัวข้อ
+            <h3 className="font-extrabold text-lg text-[#f59e0b]">
+              {course.sections.find((s) => s.id === targetSectionId)?.title}
             </h3>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-1">ประเภท</label>
-              <select
-                value={itemType}
-                onChange={(e) => setItemType(e.target.value as "ASSIGNMENT" | "MATERIAL")}
-                className="w-full px-3 py-2 text-sm border border-[#c4b5fd] rounded-xl bg-white text-zinc-800"
-              >
-                <option value="ASSIGNMENT">✎ สั่งงาน (Assignment)</option>
-                <option value="MATERIAL">📄 เอกสาร / สไลด์ (Material)</option>
-              </select>
+              <label className="block text-xs font-bold text-white mb-1.5">ประเภท</label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setItemType("ASSIGNMENT")}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold border transition cursor-pointer ${itemType === "ASSIGNMENT"
+                      ? "bg-[#f59e0b] text-[#0f172a] border-[#f59e0b] shadow-md"
+                      : "bg-[#263042] text-slate-300 border-[#3a465c] hover:bg-[#2f3b52] hover:text-white"
+                    }`}
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  <span>Assignment</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setItemType("MATERIAL")}
+                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-extrabold border transition cursor-pointer ${itemType === "MATERIAL"
+                      ? "bg-[#f59e0b] text-[#0f172a] border-[#f59e0b] shadow-md"
+                      : "bg-[#263042] text-slate-300 border-[#3a465c] hover:bg-[#2f3b52] hover:text-white"
+                    }`}
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <span>Lecture</span>
+                </button>
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-1">
-                ชื่องาน / หัวข้อเอกสาร *
+              <label className="block text-xs font-bold text-white mb-1">
+                {itemType === "ASSIGNMENT" ? "ชื่องานที่สั่ง *" : "ชื่อเอกสาร / สไลด์ *"}
               </label>
               <input
                 type="text"
                 required
-                placeholder="เช่น Assignment 1: Submit 1 research article + short note"
+                placeholder={
+                  itemType === "ASSIGNMENT"
+                    ? "เช่น Assignment 1: Submit 1 research article + short note"
+                    : "เช่น Lecture 1: Course Overview & Introduction Slides"
+                }
                 value={itemTitle}
                 onChange={(e) => setItemTitle(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-[#c4b5fd] rounded-xl bg-white text-zinc-800"
+                className="w-full px-3.5 py-2.5 text-sm border border-[#3a465c] rounded-xl bg-[#263042] text-white placeholder-[#7f8999] outline-none focus:ring-2 focus:ring-[#f59e0b]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-700 mb-1">
-                รายละเอียดคำสั่งงาน หรือลิงก์เพิ่มเติม
+              <label className="block text-xs font-bold text-white mb-1">
+                {itemType === "ASSIGNMENT"
+                  ? "รายละเอียดคำสั่งงาน หรือลิงก์เพิ่มเติม"
+                  : "คำอธิบายเอกสาร หรือลิงก์ดาวน์โหลด"}
               </label>
               <textarea
                 rows={3}
-                placeholder="พิมพ์คำสั่งงาน รายละเอียดการส่ง หรือแปะลิงก์ไฟล์ที่นี่..."
+                placeholder={
+                  itemType === "ASSIGNMENT"
+                    ? "พิมพ์คำสั่งงาน รายละเอียดการส่ง หรือแปะลิงก์ไฟล์ที่นี่..."
+                    : "พิมพ์สรุปเนื้อหาเอกสาร หรือแปะลิงก์ไฟล์สไลด์ที่นี่..."
+                }
                 value={itemDesc}
                 onChange={(e) => setItemDesc(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-[#c4b5fd] rounded-xl bg-white text-zinc-800"
+                className="w-full px-3.5 py-2.5 text-sm border border-[#3a465c] rounded-xl bg-[#263042] text-white placeholder-[#7f8999] outline-none focus:ring-2 focus:ring-[#f59e0b]"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">
-                  วันเปิด (Opened - ไม่บังคับ)
+                <label className="block text-xs font-bold text-white mb-1">
+                  วันเปิด (ไม่บังคับ)
                 </label>
                 <input
                   type="datetime-local"
                   value={itemOpenedAt}
                   onChange={(e) => setItemOpenedAt(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#c4b5fd] rounded-xl bg-white text-zinc-800"
+                  className="w-full px-3 py-2 text-xs border border-[#3a465c] rounded-xl bg-[#263042] text-white outline-none focus:ring-2 focus:ring-[#f59e0b]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1">
-                  กำหนดส่ง (Due - ไม่บังคับ)
+                <label className="block text-xs font-bold text-white mb-1">
+                  กำหนดส่ง (ไม่บังคับ)
                 </label>
                 <input
                   type="datetime-local"
                   value={itemDueDate}
                   onChange={(e) => setItemDueDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-[#c4b5fd] rounded-xl bg-white text-zinc-800"
+                  className="w-full px-3 py-2 text-xs border border-[#3a465c] rounded-xl bg-[#263042] text-white outline-none focus:ring-2 focus:ring-[#f59e0b]"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setTargetSectionId(null)}
-                className="px-4 py-2 text-sm border border-[#c4b5fd] rounded-xl bg-white text-zinc-700"
+                className="px-4 py-2 text-sm border border-[#3a465c] rounded-xl bg-[#263042] text-slate-200 hover:bg-[#334155] cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm bg-[#700d2b] text-white rounded-xl font-semibold"
+                className="px-4 py-2 text-sm bg-[#f59e0b] text-[#0f172a] rounded-xl font-extrabold cursor-pointer"
               >
                 บันทึก
               </button>
@@ -588,17 +647,22 @@ export default function CourseDetailPage({
 
       {/* Modal เพิ่มสมาชิก */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#f5f0ff] border border-[#d8b4fe] rounded-2xl max-w-md w-full p-5 shadow-xl">
-            <h3 className="font-bold text-lg text-[#3b076b] mb-3">เพิ่มนักศึกษาเข้ารายวิชา</h3>
-            <div className="max-h-60 overflow-y-auto divide-y divide-[#e9d5ff] border border-[#c4b5fd] rounded-xl bg-white mb-4">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#151c2c] border border-[#2a3447] rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <h3 className="font-extrabold text-lg text-[#f59e0b] mb-3">
+              เพิ่มนักศึกษาเข้ารายวิชา
+            </h3>
+            <div className="max-h-60 overflow-y-auto divide-y divide-[#2a3447] border border-[#3a465c] rounded-2xl bg-[#1e2638] mb-4">
               {allStudents.length === 0 ? (
-                <p className="p-4 text-sm text-zinc-500 text-center">
+                <p className="p-4 text-sm text-slate-400 text-center">
                   ไม่มีนักศึกษาเพิ่มเติมให้เลือกแล้ว
                 </p>
               ) : (
                 allStudents.map((s) => (
-                  <label key={s.id} className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-[#f5f0ff]">
+                  <label
+                    key={s.id}
+                    className="flex items-center gap-3 p-3 cursor-pointer hover:bg-[#263042]"
+                  >
                     <input
                       type="checkbox"
                       checked={selectedNewIds.includes(s.id)}
@@ -607,24 +671,25 @@ export default function CourseDetailPage({
                           prev.includes(s.id) ? prev.filter((i) => i !== s.id) : [...prev, s.id]
                         )
                       }
+                      className="accent-[#f59e0b]"
                     />
-                    <span className="text-sm text-zinc-800">
-                      {s.studentId} - {s.name}
+                    <span className="text-sm text-white">
+                      <span className="font-bold text-[#f59e0b]">{s.studentId}</span> - {s.name}
                     </span>
                   </label>
                 ))
               )}
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2.5">
               <button
                 onClick={() => setShowAddMemberModal(false)}
-                className="px-3 py-1.5 text-sm border border-[#c4b5fd] bg-white rounded-xl"
+                className="px-4 py-2 text-sm border border-[#3a465c] bg-[#263042] text-slate-200 rounded-xl cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 onClick={handleAddMembers}
-                className="px-3 py-1.5 text-sm bg-[#700d2b] text-white rounded-xl font-semibold"
+                className="px-4 py-2 text-sm bg-[#f59e0b] text-[#0f172a] rounded-xl font-extrabold cursor-pointer"
               >
                 เพิ่มสมาชิก ({selectedNewIds.length})
               </button>

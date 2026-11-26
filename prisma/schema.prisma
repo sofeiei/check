@@ -39,13 +39,15 @@ model Notification {
 }
 
 model Student {
-  id        Int                  @id @default(autoincrement())
-  studentId String               @unique
-  name      String
-  gpa       Float
-  image     String?
-  createdAt DateTime             @default(now())
-  groups    StudentGroupMember[]
+  id           Int                  @id @default(autoincrement())
+  studentId    String               @unique
+  name         String
+  gpa          Float                @default(0)
+  year         String?
+  facultyMajor String?
+  image        String?
+  createdAt    DateTime             @default(now())
+  groups       StudentGroupMember[]
 }
 
 model StudentGroup {

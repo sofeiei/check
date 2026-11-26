@@ -132,17 +132,6 @@ export default function Home() {
             </span>
           ))} ผู้พัฒนาระบบ{" "}
         </div>
-        <div>
-          <a
-            href={CREDITS.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#700d2b] hover:underline font-semibold"
-          >
-            GitHub
-          </a>{" "}
-          © {CREDITS.year}
-        </div>
       </footer>
     </div>
   );
