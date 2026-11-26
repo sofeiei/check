@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+}
+
+model User {
+  id            Int            @id @default(autoincrement())
+  username      String         @unique
+  studentId     String?        @unique
+  name          String
+  avatar        String?
+  passwordHash  String
+  role          Role           @default(STUDENT)
+  createdAt     DateTime       @default(now())
+  createdGroups StudentGroup[] @relation("GroupCreator")
+  notifications Notification[]
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Student {
+  id        Int                  @id @default(autoincrement())
+  studentId String               @unique
+  name      String
+  gpa       Float
+  image     String?
+  createdAt DateTime             @default(now())
+  groups    StudentGroupMember[]
+}
+
+model StudentGroup {
+  id          Int                  @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime             @default(now())
+  creatorId   Int
+  creator     User                 @relation("GroupCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  members     StudentGroupMember[]
+  sections    GroupSection[]
+
+  @@index([creatorId])
+}
+
+model StudentGroupMember {
+  id        Int          @id @default(autoincrement())
+  groupId   Int
+  studentId Int
+  createdAt DateTime     @default(now())
+  group     StudentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student   Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([studentId])
+}
+
+model GroupSection {
+  id        Int          @id @default(autoincrement())
+  title     String
+  order     Int          @default(0)
+  createdAt DateTime     @default(now())
+  groupId   Int
+  group     StudentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  items     GroupItem[]
+
+  @@index([groupId])
+}
+
+model GroupItem {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  type        String       @default("ASSIGNMENT")
+  openedAt    DateTime?
+  dueDate     DateTime?
+  createdAt   DateTime     @default(now())
+  sectionId   Int
+  section     GroupSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+
+  @@index([sectionId])
+}
