@@ -11,8 +11,8 @@ export default function StudentList() {
 
   const fetchStudents = () => {
     fetch("/api/students")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setStudents(Array.isArray(data) ? data : []);
         setIsLoading(false);
       })
@@ -23,7 +23,6 @@ export default function StudentList() {
     fetchStudents();
   }, []);
 
-  // ฟังก์ชันลบข้อมูล
   const handleDelete = async (id: number) => {
     if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนี้?")) {
       const res = await fetch(`/api/students/${id}`, { method: "DELETE" });
@@ -32,41 +31,42 @@ export default function StudentList() {
         alert(data.error || "ลบข้อมูลไม่สำเร็จ");
         return;
       }
-      fetchStudents(); // โหลดข้อมูลใหม่หลังจากลบเสร็จ
+      fetchStudents();
     }
   };
 
-  // กรองข้อมูลตามคำค้นหา
-  const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.studentId.includes(searchTerm)
+  const filteredStudents = students.filter(
+    (student) =>
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.studentId.includes(searchTerm)
   );
 
-  // คำนวณสถิติ
   const totalStudents = filteredStudents.length;
-  const averageGPA = totalStudents > 0 ? (filteredStudents.reduce((sum, std) => sum + std.gpa, 0) / totalStudents).toFixed(2) : 0;
-  const highPerformers = filteredStudents.filter(std => std.gpa >= 3.5).length;
+  const averageGPA =
+    totalStudents > 0
+      ? (filteredStudents.reduce((sum, std) => sum + std.gpa, 0) / totalStudents).toFixed(2)
+      : 0;
+  const highPerformers = filteredStudents.filter((std) => std.gpa >= 3.5).length;
 
-  if (isLoading) return <div className="text-center mt-20 text-[#000000] font-bold animate-pulse">กำลังโหลดข้อมูล...</div>;
+  if (isLoading)
+    return (
+      <div className="text-center mt-20 text-[#000000] font-bold animate-pulse">
+        กำลังโหลดข้อมูล...
+      </div>
+    );
 
   return (
     <div className="mt-4">
       <div className="flex flex-col md:flex-row md:justify-between items-center mb-8 gap-4 border-b border-[#ede9fe] pb-4 text-center md:text-left">
         <div>
           <h2 className="text-3xl font-extrabold text-[#000000]">รายชื่อนักศึกษา</h2>
-          <p className="text-[#000000] mt-1 font-medium">พบข้อมูลทั้งหมด {filteredStudents.length} รายการ</p>
+          <p className="text-[#000000] mt-1 font-medium">
+            ดึงข้อมูลจากนักศึกษาที่สมัครสมาชิกทั้งหมด ({filteredStudents.length} รายการ)
+          </p>
           {!isTeacher && (
             <p className="text-sm text-[#7c3aed] mt-1">โหมดนักเรียน: ดูข้อมูลได้อย่างเดียว</p>
           )}
         </div>
-        {isTeacher && (
-          <Link
-            href="/add"
-            className="cursor-pointer bg-[#700d2b] text-white font-bold py-3 px-6 rounded-full shadow-md border border-[#c4b5fd] hover:scale-105 hover:text-yellow-300 transition-all"
-          >
-            เพิ่มข้อมูล
-          </Link>
-        )}
       </div>
 
       {/* แถบค้นหา */}
@@ -100,42 +100,59 @@ export default function StudentList() {
 
       {filteredStudents.length === 0 ? (
         <div className="text-center bg-[#f3e8ff] p-10 rounded-3xl border border-[#d8b4fe] shadow-sm mt-10">
-          <p className="text-[#000000] mb-4">ยังไม่มีข้อมูลนักศึกษาในระบบ</p>
+          <p className="text-[#000000] mb-4">ยังไม่มีนักศึกษาที่สมัครสมาชิกในระบบ</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredStudents.map((std) => (
-            <div key={std.id} className="bg-[#f3e8ff] p-6 rounded-3xl shadow-sm border border-[#d8b4fe] hover:shadow-lg hover:scale-105 transition-all duration-300 relative overflow-hidden flex flex-col h-full animate-fade-in">
-              <div className="absolute top-0 left-0 w-2 h-full bg-[#7c3aed] transition-all duration-300 hover:w-4"></div>
+            <div
+              key={std.id}
+              className="bg-[#f3e8ff] p-6 rounded-3xl shadow-sm border border-[#d8b4fe] hover:shadow-lg hover:scale-105 transition-all duration-300 relative overflow-hidden flex flex-col h-full animate-fade-in"
+            >
               <div className="absolute top-0 left-0 w-2 h-full bg-[#7c3aed]"></div>
-              
+
               <div className="flex-grow">
                 <div className="flex items-center gap-3 mb-3">
                   {std.image ? (
-                    <img src={std.image} alt={std.name} className="w-12 h-12 object-cover rounded-full border-2 border-[#7c3aed]" />
+                    <img
+                      src={std.image}
+                      alt={std.name}
+                      className="w-12 h-12 object-cover rounded-full border-2 border-[#7c3aed]"
+                    />
                   ) : (
                     <div className="w-12 h-12 bg-[#d8b4fe] rounded-full flex items-center justify-center text-[#7c3aed] font-bold">
                       {std.name.charAt(0)}
                     </div>
                   )}
                   <div>
-                    <p className="text-xs font-bold text-[#7c3aed] tracking-wider mb-1 uppercase">รหัสนักศึกษา</p>
+                    <p className="text-xs font-bold text-[#7c3aed] tracking-wider mb-1 uppercase">
+                      รหัสนักศึกษา
+                    </p>
                     <p className="text-xl font-black text-[#3b076b]">{std.studentId}</p>
                   </div>
                 </div>
-                
-                <p className="text-xs font-bold text-[#5b21b6] tracking-wider mb-1 uppercase">ชื่อ-นามสกุล</p>
+
+                <p className="text-xs font-bold text-[#5b21b6] tracking-wider mb-1 uppercase">
+                  ชื่อ-นามสกุล
+                </p>
                 <p className="text-lg font-bold text-[#3b076b] mb-4 truncate">{std.name}</p>
-                
+
                 <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#d8b4fe]">
                   <p className="text-sm font-bold text-[#5b21b6]">เกรดเฉลี่ยสะสม</p>
-                  <p className={`text-2xl font-black ${std.gpa >= 3.0 ? 'text-emerald-500' : std.gpa >= 2.0 ? 'text-amber-500' : 'text-rose-500'}`}>
+                  <p
+                    className={`text-2xl font-black ${
+                      std.gpa >= 3.0
+                        ? "text-emerald-500"
+                        : std.gpa >= 2.0
+                        ? "text-amber-500"
+                        : "text-rose-500"
+                    }`}
+                  >
                     {std.gpa.toFixed(2)}
                   </p>
                 </div>
               </div>
 
-              {/* ปุ่มแก้ไขและลบ: เห็นเฉพาะอาจารย์ (API ฝั่งเซิร์ฟเวอร์ตรวจสิทธิ์ซ้ำอีกชั้น) */}
               {isTeacher && (
                 <div className="mt-6 flex gap-2">
                   <Link href={`/edit/${std.id}`} className="flex-1">

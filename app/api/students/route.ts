@@ -4,41 +4,56 @@ import { prisma } from "@/lib/prisma";
 import { studentSchema } from "@/lib/studentSchema";
 import { authorizeApi } from "@/lib/session";
 
-// ดูรายชื่อ: เห็นเฉพาะนักศึกษาที่อยู่ในกลุ่มเดียวกัน (ยกเว้นอาจารย์เรียก ?all=true เพื่อเลือกคนเข้ากลุ่ม)
+// ซิงก์นักศึกษาที่สมัครสมาชิก (User role=STUDENT) เข้าตาราง Student อัตโนมัติ
+async function syncRegisteredStudents() {
+  const registeredUsers = await prisma.user.findMany({
+    where: { role: "STUDENT" },
+    select: { username: true, studentId: true, name: true },
+  });
+
+  for (const u of registeredUsers) {
+    const sid = (u.studentId || u.username).trim();
+    if (!sid) continue;
+
+    await prisma.student.upsert({
+      where: { studentId: sid },
+      update: { name: u.name },
+      create: {
+        studentId: sid,
+        name: u.name,
+        gpa: 0.0,
+      },
+    });
+  }
+}
+
 export async function GET(req: Request) {
   const auth = await authorizeApi("ANY");
   if ("response" in auth) return auth.response;
 
-  const { searchParams } = new URL(req.url);
-  const fetchAllForSelect = searchParams.get("all") === "true";
-
   try {
+    // ซิงก์รายชื่อนักศึกษาที่สมัครสมาชิกทั้งหมดให้ตรงกับตาราง Student
+    await syncRegisteredStudents();
+
     const user = auth.user;
 
     if (user.role === "TEACHER") {
-      // ตอนอาจารย์เลือกนักศึกษาเข้ากลุ่ม ให้เห็นรายชื่อทั้งหมดในระบบได้
-      if (fetchAllForSelect) {
-        const allStudents = await prisma.student.findMany({
-          orderBy: { studentId: "asc" },
-        });
-        return NextResponse.json(allStudents);
-      }
-
-      // หน้าหลัก /students แสดงเฉพาะนักศึกษาที่อยู่ในกลุ่มของอาจารย์คนนี้
-      const students = await prisma.student.findMany({
-        where: {
-          groups: {
-            some: {
-              group: { creatorId: user.id },
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
+      // อาจารย์เห็นนักศึกษาที่สมัครสมาชิกทั้งหมดในระบบ (ทั้งหน้า /students และหน้าเลือกเข้าวิชา)
+      const allStudents = await prisma.student.findMany({
+        orderBy: { studentId: "asc" },
       });
-      return NextResponse.json(students);
+      return NextResponse.json(allStudents);
     }
 
-    // นักศึกษาเห็นเฉพาะเพื่อนร่วมกลุ่มเดียวกัน
+    // นักศึกษาเห็นเพื่อนร่วมกลุ่มเดียวกัน
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { username: true, studentId: true, name: true },
+    });
+    const studentIdentifiers = [dbUser?.studentId, dbUser?.username, user.username].filter(
+      (v): v is string => Boolean(v)
+    );
+
     const students = await prisma.student.findMany({
       where: {
         groups: {
@@ -46,23 +61,22 @@ export async function GET(req: Request) {
             group: {
               members: {
                 some: {
-                  student: { studentId: user.username },
+                  student: { studentId: { in: studentIdentifiers } },
                 },
               },
             },
           },
         },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { studentId: "asc" },
     });
 
     return NextResponse.json(students);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "ดึงข้อมูลล้มเหลว" }, { status: 500 });
   }
 }
 
-// เพิ่มข้อมูล: เฉพาะอาจารย์
 export async function POST(req: Request) {
   const auth = await authorizeApi("TEACHER");
   if ("response" in auth) return auth.response;

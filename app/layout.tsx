@@ -30,7 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       href="/"
                       className="text-xl lg:text-2xl font-extrabold tracking-tight text-[#f59e0b] hover:opacity-90"
                     >
-                      Student Manager
+                      CourseHub
                     </Link>
                   </div>
                   <div className="ml-auto flex items-center gap-3">
